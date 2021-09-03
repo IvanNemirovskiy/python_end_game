@@ -35,7 +35,10 @@ ig: https://www.instagram.com/im.nem/)
 
 
 **Vitalii Semenov** \
+
 role: software developer (requests, Data Base) \
+
+role: software developer (requests, gui)
+
 email: vsemenov@student.ucode.world \
 ig: https://www.instagram.com/prosperous/  
-    

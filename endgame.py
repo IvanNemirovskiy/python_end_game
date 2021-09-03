@@ -1,11 +1,11 @@
-
 import argparse, sys
-
 import sqlite3
-import sqlite3
+import time
 import re
+
 import requests
 import logging
+import uuid
 import tkinter as tk
 from tkinter import ttk, messagebox
 from tkinter import *
@@ -13,42 +13,42 @@ import yaml
 import json
 from requests.auth import HTTPBasicAuth
 import tkmacosx
+
 from history import add_history, history, show_index_from_history, clear_history
 
-logger = logging.getLogger("ENDGAME")
+#logger = logging.getLogger("ENDGAME")
 
-
-def log_endgame(message, level = logging.INFO):
-    log_level = logging.DEBUG
-    if args.log:
-        if args.log == "info":
-            log_level = logging.INFO
-        elif args.log == "warning":
-            log_level = logging.WARNING
-        elif args.log == "debug":
-            log_level = logging.DEBUG
-
-
-    logger = logging.getLogger("ENDGAME")
-    logger.setLevel(log_level)
-    logFormatter = logging.Formatter("CLI %(levelname)s - %(asctime)s : %(message)s")
-
-    fileHandler = logging.FileHandler("end-game.log")
-    fileHandler.setFormatter(logFormatter)
-    fileHandler.setLevel(log_level)
-    logger.addHandler(fileHandler)
-
-    consoleHandler = logging.StreamHandler()
-    consoleHandler.setFormatter(logFormatter)
-    consoleHandler.setLevel(log_level)
-    logger.addHandler(consoleHandler)
-
-    if level is logging.DEBUG:
-        logger.debug(message)
-    elif level is logging.INFO:
-        logger.info(message)
-    elif level is logging.WARNING:
-        logger.warning(message)
+# def log_endgame(message, level = logging.INFO):
+#     log_level = logging.DEBUG
+#     if args.log:
+#         if args.log == "info":
+#             log_level = logging.INFO
+#         elif args.log == "warning":
+#             log_level = logging.WARNING
+#         elif args.log == "debug":
+#             log_level = logging.DEBUG
+#
+#
+#     logger = logging.getLogger("ENDGAME")
+#     logger.setLevel(log_level)
+#     logFormatter = logging.Formatter("CLI %(levelname)s - %(asctime)s : %(message)s")
+#
+#     fileHandler = logging.FileHandler("end-game.log")
+#     fileHandler.setFormatter(logFormatter)
+#     fileHandler.setLevel(log_level)
+#     logger.addHandler(fileHandler)
+#
+#     consoleHandler = logging.StreamHandler()
+#     consoleHandler.setFormatter(logFormatter)
+#     consoleHandler.setLevel(log_level)
+#     logger.addHandler(consoleHandler)
+#
+#     if level is logging.DEBUG:
+#         logger.debug(message)
+#     elif level is logging.INFO:
+#         logger.info(message)
+#     elif level is logging.WARNING:
+#         logger.warning(message)
 
 
 def parse_args():
@@ -104,25 +104,43 @@ def perform_request():  # Decide what request to do and make it
 
     # GET method
     if args.method == 'GET':
+        logging.info(f"Perform request")
+        logging.debug(f"Request params [{args.method}]")
         request = requests.get(args.endpoint, params=get_params(), auth=get_auth())
+        logging.info(f"Got response {request.status_code} {ok if request.ok is True else request.status_code} in {str(round(request.elapsed.total_seconds(), 2))} seconds")
+
 
     # POST method
     if args.method == 'POST':
+        logging.info(f"Perform request")
+        logging.debug(f"Request params [{args.method}]")
         request = requests.post(args.endpoint, params=get_params(), auth=get_auth(), data=args.body, headers=get_headers())
+        logging.info(f"Got response {request.status_code} {ok if request.ok is True else request.status_code} in {str(round(request.elapsed.total_seconds(), 2))} seconds")
+
 
     # PUT method
     if args.method == 'PUT':
+        logging.info(f"Perform request")
+        logging.debug(f"Request params [{args.method}]")
         request = requests.put(args.endpoint, params=get_params(), auth=get_auth(), data=args.body, headers=get_headers())
+        logging.info(f"Got response {request.status_code} {ok if request.ok is True else request.status_code} in {str(round(request.elapsed.total_seconds(), 2))} seconds")
+
 
     # PATCH method
     if args.method == 'PATCH':
+        logging.info(f"Perform request")
+        logging.debug(f"Request params [{args.method}]")
         request = requests.patch(args.endpoint, params=get_params(), auth=get_auth(), data=args.body, headers=get_headers())
+        logging.info(f"Got response {request.status_code} {ok if request.ok is True else request.status_code} in {str(round(request.elapsed.total_seconds(), 2))} seconds")
+
 
     # DELETE method
     if args.method == 'DELETE':
-        request = requests.delete(args.endpoint, params=get_params(), auth=get_auth(), data=args.body, headers=get_headers())
+        logging.info(f"Perform request")
+        logging.debug(f"Request params [{args.method}]")
+        logging.info(f"Got response {request.status_code} {ok if request.ok is True else request.status_code} in {str(round(request.elapsed.total_seconds(), 2))} seconds")
 
-    log_endgame(f"Method {args.method} got response {request.status_code} {ok if request.ok is True else 'Not Found'} in {round(request.elapsed.total_seconds(), 2)} seconds from {args.endpoint}")
+    logging.debug(f"Method {args.method} got response {request.status_code} {ok if request.ok is True else 'Not Found'} in {round(request.elapsed.total_seconds(), 2)} seconds from {args.endpoint}")
     print_result(request)
 
 
@@ -141,9 +159,15 @@ def print_result(request):  # print results to JSON,YAML or text
     request_result['Body'] = args.body
     request_result['Headers'] = get_headers()
 
+    logging.debug("Adding record to the history")
+    auth = str(request_result['Auth'])
+    request_result['Auth'] = auth
     add_history(request_result)
+    logging.debug("Printing results")
 
     try:
+        print("---Got response " + str(request.status_code) + " " + f"{ok if request.ok is True else request.status_code}" + " " + f"{str(round(request.elapsed.total_seconds(), 2))}" + " seconds---")
+        print('---Response body---')
         if args.json:
             print(json.dumps(request.json(), indent=2))
         elif args.yaml:
@@ -221,25 +245,21 @@ def main_gui():
     choose_method = StringVar()
     choose_method.set(options_requests[0])
     drop_methods = OptionMenu(request_frame, choose_method, *options_requests)
-    drop_methods.pack(side='left')
     drop_methods.grid(row=0, column=0)
 
     url_entry = tk.Entry(request_frame, width=30, fg='grey', bg='black')
     url_entry.insert(0, 'URL')
-    url_entry.pack(side='left')
     url_entry.grid(row=0, column=1)
     url_entry.bind("<FocusIn>", lambda args: focus_in_entry_box(url_entry))
     url_entry.bind("<FocusOut>", lambda args: focus_out_entry_box(url_entry, 'URL'))
 
     # Basic Authentication Frame
     auth_frame = LabelFrame(request_frame, text="Basic Authentication", labelanchor='n')
-    auth_frame.pack()
     auth_frame.grid(row=1, column=0, sticky="nsew", columnspan=2)
 
     # username placeholder entry
     username_entry = Entry(auth_frame, fg='Grey')
     username_entry.insert(0, 'username')
-    username_entry.pack()
     username_entry.grid(row=2, column=0)
     username_entry.bind("<FocusIn>", lambda args: focus_in_entry_box(username_entry))
     username_entry.bind("<FocusOut>", lambda args: focus_out_entry_box(username_entry, 'username'))
@@ -247,7 +267,6 @@ def main_gui():
     # user password placeholder entry
     password_entry = Entry(auth_frame, fg='Grey')
     password_entry.insert(0, 'password')
-    password_entry.pack(side='bottom')
     password_entry.grid(row=2, column=1)
     password_entry.bind("<FocusIn>", lambda args: focus_in_entry_box(password_entry))
     password_entry.bind("<FocusOut>", lambda args: focus_out_entry_box(password_entry, 'password'))
@@ -267,48 +286,38 @@ def main_gui():
     # Frame, Entries and Button for Params
     # Frame
     params_frame = LabelFrame(request_frame, text='+ params', labelanchor='n')
-    params_frame.pack(side=TOP)
     params_frame.grid(row=2, column=0, columnspan=3)
 
     # Entries
     keyword_entry1 = Entry(params_frame)
-    keyword_entry1.pack()
     keyword_entry1.grid(row=0, column=0)
 
     value_entry1 = Entry(params_frame)
-    value_entry1.pack()
+
     value_entry1.grid(row=0, column=1)
 
     keyword_entry2 = Entry(params_frame)
-    keyword_entry2.pack()
     keyword_entry2.grid(row=1, column=0)
 
     value_entry2 = Entry(params_frame)
-    value_entry2.pack()
     value_entry2.grid(row=1, column=1)
 
     keyword_entry3 = Entry(params_frame)
-    keyword_entry3.pack()
     keyword_entry3.grid(row=2, column=0)
 
     value_entry3 = Entry(params_frame)
-    value_entry3.pack()
     value_entry3.grid(row=2, column=1)
 
     keyword_entry4 = Entry(params_frame)
-    keyword_entry4.pack()
     keyword_entry4.grid(row=3, column=0)
 
     value_entry4 = Entry(params_frame)
-    value_entry4.pack()
     value_entry4.grid(row=3, column=1)
 
     keyword_entry5 = Entry(params_frame)
-    keyword_entry5.pack()
     keyword_entry5.grid(row=4, column=0)
 
     value_entry5 = Entry(params_frame)
-    value_entry5.pack()
     value_entry5.grid(row=4, column=1)
 
     def take_params():
@@ -322,7 +331,7 @@ def main_gui():
         return HEADERS
 
     def take_body():
-        BODY = {keybody_entry.get(), valuebody_entry.get()}
+        BODY = {keybody_entry.get(): valuebody_entry.get()}
         return BODY
 
     # Set params Button
@@ -332,64 +341,54 @@ def main_gui():
     # Body frame, entries and button
     # Body param Frame
     body_request_frame = LabelFrame(request_frame, text='+ body', labelanchor='n')
-    body_request_frame.pack(side=TOP)
     body_request_frame.grid(row=3, column=0, columnspan=3)
 
     # Entries for body param
     keybody_entry = Entry(body_request_frame, fg='Grey')
     keybody_entry.insert(0, 'key')
-    keybody_entry.pack(side='bottom')
     keybody_entry.grid(row=0, column=0)
     keybody_entry.bind("<FocusIn>", lambda args: focus_in_entry_box(keybody_entry))
     keybody_entry.bind("<FocusOut>", lambda args: focus_out_entry_box(keybody_entry, 'key'))
 
     valuebody_entry = Entry(body_request_frame, fg='Grey')
     valuebody_entry.insert(0, 'value')
-    valuebody_entry.pack()
     valuebody_entry.grid(row=0, column=1)
     valuebody_entry.bind("<FocusIn>", lambda args: focus_in_entry_box(valuebody_entry))
     valuebody_entry.bind("<FocusOut>", lambda args: focus_out_entry_box(valuebody_entry, 'value'))
 
     # Button set body param
     set_body_button = tkmacosx.Button(body_request_frame, text="+", fg='aquamarine', bg='black', command=take_body)
-    set_body_button.pack()
     set_body_button.grid(row=0, column=2)
 
     # Headers frame, entries and button
     # Frame for headers
     headers_frame = LabelFrame(request_frame, text='+ headers', labelanchor='n')
-    headers_frame.pack(side=TOP)
     headers_frame.grid(row=4, column=0, columnspan=3)
 
     # Entries for headers
     keyheader_entry = Entry(headers_frame, fg='Grey')
     keyheader_entry.insert(0, 'key')
-    keyheader_entry.pack()
     keyheader_entry.grid(row=0, column=0)
     keyheader_entry.bind("<FocusIn>", lambda args: focus_in_entry_box(keyheader_entry))
     keyheader_entry.bind("<FocusOut>", lambda args: focus_out_entry_box(keyheader_entry, 'key'))
 
     valueheader_entry = Entry(headers_frame, fg='Grey')
     valueheader_entry.insert(0, 'value')
-    valueheader_entry.pack()
     valueheader_entry.grid(row=0, column=1)
     valueheader_entry.bind("<FocusIn>", lambda args: focus_in_entry_box(valueheader_entry))
     valueheader_entry.bind("<FocusOut>", lambda args: focus_out_entry_box(valueheader_entry, 'value'))
 
     # Button set headers
     set_header_button = tkmacosx.Button(headers_frame, text="+", fg='aquamarine', bg='black', command=take_headers)
-    set_header_button.pack()
     set_header_button.grid(row=0, column=2)
 
     # log level frame, label and radiobutton
     # log level frame
     log_level_frame = Frame(request_frame)
-    log_level_frame.pack()
     log_level_frame.grid(row=5, column=0, columnspan=2)
 
     # log level label
     log_level_label = Label(log_level_frame, text='Log Level')
-    log_level_label.pack()
     log_level_label.grid(row=0, column=0)
 
     # variable to get radiobutton value
@@ -401,59 +400,49 @@ def main_gui():
     level_debug_radiobutton = tkmacosx.Radiobutton(log_level_frame, text='DEBUG', variable=log_level, value='DEBUG',
                                                    background='black', selectcolor='dark green',
                                                    foreground='aquamarine', indicatoron=0, padx=15)
-    level_debug_radiobutton.pack()
     level_debug_radiobutton.grid(row=0, column=1)
 
     level_info_radiobutton = tkmacosx.Radiobutton(log_level_frame, text='INFO', variable=log_level, value='INFO',
                                                   background='black', selectcolor='dark green', foreground='aquamarine', indicatoron=0, padx=15)
     level_info_radiobutton.select()
-    level_info_radiobutton.pack()
     level_info_radiobutton.grid(row=0, column=2)
 
     level_warning_radiobutton = tkmacosx.Radiobutton(log_level_frame, text='WARNING', variable=log_level,
                                                      value='WARNING', background='black', selectcolor='dark green',
                                                      foreground='aquamarine', indicatoron=0, padx=15)
-    level_warning_radiobutton.pack()
     level_warning_radiobutton.grid(row=0, column=3)
 
     # Response view
     response_view = StringVar(root, 'treeview')
     response_type_frame = Frame(request_frame)
-    response_type_frame.pack()
     response_type_frame.grid(row=6, column=0, columnspan=10, pady=8)
 
     response_label = Label(response_type_frame, text='Response view')
-    response_label.pack()
     response_label.grid(row=0, column=0)
 
     response_treeview_radiobutton = tkmacosx.Radiobutton(response_type_frame, text='Treeview', variable=response_view,
                                                      value='treeview',background='black', selectcolor='dark green',
                                                      foreground='aquamarine', indicatoron=0)
-    response_treeview_radiobutton.pack()
     response_treeview_radiobutton.grid(row=0, column=1)
 
     response_json_radiobutton = tkmacosx.Radiobutton(response_type_frame, text='Pretty JSON', variable=response_view,
                                                          value='json', background='black', selectcolor='dark green',
                                                          foreground='aquamarine', indicatoron=0)
-    response_json_radiobutton.pack()
     response_json_radiobutton.grid(row=0, column=2)
 
     response_yaml_radiobutton = tkmacosx.Radiobutton(response_type_frame, text='YAML', variable=response_view,
                                                          value='yaml', background='black', selectcolor='dark green',
                                                          foreground='aquamarine', indicatoron=0)
-    response_yaml_radiobutton.pack()
     response_yaml_radiobutton.grid(row=0, column=3)
 
     response_table_radiobutton = tkmacosx.Radiobutton(response_type_frame, text='Table', variable=response_view,
                                                      value='table', background='black', selectcolor='dark green',
                                                      foreground='aquamarine', indicatoron=0)
-    response_table_radiobutton.pack()
     response_table_radiobutton.grid(row=0, column=4)
 
     response_raw_radiobutton = tkmacosx.Radiobutton(response_type_frame, text='Raw', variable=response_view,
                                                       value='text', background='black', selectcolor='dark green',
                                                       foreground='aquamarine', indicatoron=0)
-    response_raw_radiobutton.pack()
     response_raw_radiobutton.grid(row=0, column=5)
 
 
@@ -528,6 +517,7 @@ def main_gui():
         tree.delete(*tree.get_children())
         tree['columns'] = ()
         tree.column("#0", width=400, stretch=YES)
+
         i =0
         for p_data in data:
             string = p_data
@@ -544,16 +534,16 @@ def main_gui():
     def show_yaml(tree, data):
         tree.delete(*tree.get_children())
         tree['columns'] = ()
-        tree.column('#0', width=400)
-        yaml_data = yaml.dump(data)
-        tree.insert('', 0, text=str(yaml_data))
+        tree.column('#0', width=400, stretch=YES)
+        yaml_res = yaml.safe_dump(data)
+        tree.insert('', 0, text=str(yaml_res))
 
     def show_raw(tree, data):
         tree.delete(*tree.get_children())
         tree['columns'] = ()
-        tree.column('#0', width=400)
-        for sub_data in data:
-            tree.insert('', 0, text=str(sub_data))
+        tree.column("#0", width=400, stretch=YES)
+        l_data = json.loads(data)
+        tree.insert('', 0, text=l_data)
 
     conn = sqlite3.connect('history.sqlite')
     cursor = conn.cursor()
@@ -597,7 +587,7 @@ def main_gui():
                 logging.error('not authorized user')
             elif response_view.get() == 'text':
                 request_data = requests.get(url_response, auth=HTTPBasicAuth(username, password))
-                output_label.configure(text=show_raw(tree, request_data.json()))
+                output_label.configure(text=show_raw(tree, request_data.text))
                 bottom_output.config(text="Got response " + str(
                     request_data.status_code) + " " + f"{ok if request_data.ok is True else 'Not found'} " + f"{str(round(request_data.elapsed.total_seconds(), 2))}" + " seconds")
                 logging.info('get method called (raw response)')
@@ -635,114 +625,122 @@ def main_gui():
                                (url_response, current_method))
 
         if str(current_method) == "POST":
-            PARAMS = {keyword_entry1: value_entry1, keyword_entry2: value_entry2, keyword_entry3: value_entry3, keyword_entry4: value_entry4, keyword_entry5: keyword_entry5}
+            PARAMS = take_params()
+            HEADERS = take_headers()
+            BODY_params = take_body()
             if username == 'username' and password == 'password':
                 messagebox.showwarning(title='Error', message='enter your username and password')
                 logging.error('not authorized user')
             if response_view.get() == 'text':
-                text_response = requests.post(url_response, data=PARAMS, auth=HTTPBasicAuth(username, password))
+                text_response = requests.post(url_response, params=PARAMS, headers=HEADERS, data=BODY_params, auth=HTTPBasicAuth(username, password))
                 output_label.configure(text=show_raw(tree, text_response.json()))
                 bottom_output.config(text="Got response " + str(
                     text_response.status_code) + " " + f"{ok if text_response.ok is True else 'Not found'} " + f"{str(round(text_response.elapsed.total_seconds(), 2))}" + " seconds")
             elif response_view.get() == 'json':
-                post_response = requests.post(url_response, data=PARAMS , auth=HTTPBasicAuth(username, password))
+                post_response = requests.post(url_response, params=PARAMS, headers=HEADERS, data=BODY_params , auth=HTTPBasicAuth(username, password))
                 output_label.configure(text=show_json(tree, post_response.json()))
                 bottom_output.config(text="Got response " + str(
                     post_response.status_code) + " " + f"{ok if post_response.ok is True else 'Not found'} " + f"{str(round(post_response.elapsed.total_seconds(), 2))}" + " seconds")
                 logging.info('get method called (json response)')
             elif response_view.get() == 'yaml':
-                yaml_response = requests.post(url_response, data=PARAMS, auth=HTTPBasicAuth(username, password))
+                yaml_response = requests.post(url_response, params=PARAMS, headers=HEADERS, data=BODY_params, auth=HTTPBasicAuth(username, password))
                 output_label.configure(text=show_yaml(tree, yaml_response.json()))
                 bottom_output.config(text="Got response " + str(
                     yaml_response.status_code) + " " + f"{ok if yaml_response.ok is True else 'Not found'} " + f"{str(round(yaml_response.elapsed.total_seconds(), 2))}" + " seconds")
             elif response_view.get() == 'table':
-                table_response = requests.post(url_response, data=PARAMS, auth=HTTPBasicAuth(username, password))
+                table_response = requests.post(url_response, params=PARAMS, headers=HEADERS, data=BODY_params, auth=HTTPBasicAuth(username, password))
                 output_label.configure(text=show_table(tree, table_response.json()))
                 bottom_output.config(text="Got response " + str(
                     table_response.status_code) + " " + f"{ok if table_response.ok is True else 'Not found'} "+ f"{str(round(table_response.elapsed.total_seconds(), 2))}" + " seconds")
             elif response_view.get() == 'treeview':
-                treeview_response = requests.post(url_response, data=PARAMS, auth=HTTPBasicAuth(username, password))
+                treeview_response = requests.post(url_response, params=PARAMS, headers=HEADERS, data=BODY_params, auth=HTTPBasicAuth(username, password))
                 output_label.configure(text=make_tree(treeview_response.json()))
                 bottom_output.config(text="Got response " + str(
                     treeview_response.status_code) + " " + f"{ok if treeview_response.ok is True else 'Not found'} " + f"{str(round(treeview_response.elapsed.total_seconds(), 2))}" + " seconds")
 
         if str(current_method) == 'PUT':
-            PARAMS = {keyword_entry1: value_entry1, keyword_entry2: value_entry2, keyword_entry3: value_entry3,
-                      keyword_entry4: value_entry4, keyword_entry5: keyword_entry5}
+            PARAMS = take_params()
+            HEADERS = take_headers()
+            BODY_params = take_body()
             if username == 'username' and password == 'password':
                 messagebox.showwarning(title='Error', message='enter your username and password')
                 logging.error('not authorized user')
             if response_view.get() == 'text':
-                text_response = requests.put(url_response, data=PARAMS, auth=HTTPBasicAuth(username, password))
+                text_response = requests.put(url_response, params=PARAMS, headers=HEADERS, data=BODY_params, auth=HTTPBasicAuth(username, password))
                 output_label.configure(text=show_raw(tree, text_response.json()))
                 bottom_output.config(text="Got response " + str(
                     text_response.status_code) + " " + f"{ok if text_response.ok is True else 'Not found'} " + f"{str(round(text_response.elapsed.total_seconds(), 2))}" + " seconds")
             elif response_view.get() == 'json':
-                post_response = requests.put(url_response, data=PARAMS, auth=HTTPBasicAuth(username, password))
+                post_response = requests.put(url_response, params=PARAMS, headers=HEADERS, data=BODY_params, auth=HTTPBasicAuth(username, password))
                 output_label.configure(text=show_json(tree, post_response.json()))
                 bottom_output.config(text="Got response " + str(
                     post_response.status_code) + " " + f"{ok if post_response.ok is True else 'Not found'} " + f"{str(round(post_response.elapsed.total_seconds(), 2))}" + " seconds")
                 logging.info('get method called (json response)')
             elif response_view.get() == 'yaml':
-                yaml_response = requests.put(url_response, data=PARAMS, auth=HTTPBasicAuth(username, password))
+                yaml_response = requests.put(url_response, params=PARAMS, headers=HEADERS, data=BODY_params, auth=HTTPBasicAuth(username, password))
                 output_label.configure(text=show_yaml(tree, yaml_response.json()))
                 bottom_output.config(text="Got response " + str(
                     yaml_response.status_code) + " " + f"{ok if yaml_response.ok is True else 'Not found'} " + f"{str(round(yaml_response.elapsed.total_seconds(), 2))}" + " seconds")
             elif response_view.get() == 'table':
-                table_response = requests.put(url_response, data=PARAMS, auth=HTTPBasicAuth(username, password))
+                table_response = requests.put(url_response, params=PARAMS, headers=HEADERS, data=BODY_params, auth=HTTPBasicAuth(username, password))
                 output_label.configure(text=show_table(tree, table_response.json()))
                 bottom_output.config(text="Got response " + str(
                     table_response.status_code) + " " + f"{ok if table_response.ok is True else 'Not found'} " + f"{str(round(table_response.elapsed.total_seconds(), 2))}" + " seconds")
             elif response_view.get() == 'treeview':
-                treeview_response = requests.put(url_response, data=PARAMS, auth=HTTPBasicAuth(username, password))
+                treeview_response = requests.put(url_response, params=PARAMS, headers=HEADERS, data=BODY_params, auth=HTTPBasicAuth(username, password))
                 output_label.configure(text=make_tree(treeview_response.json()))
                 bottom_output.config(text="Got response " + str(
                     treeview_response.status_code) + " " + f"{ok if treeview_response.ok is True else 'Not found'} " + f"{str(round(treeview_response.elapsed.total_seconds(), 2))}" + " seconds")
 
         if str(current_method) == 'PATCH':
+            PARAMS = take_params()
+            HEADERS = take_headers()
+            BODY_params = take_body()
             if username == 'username' and password == 'password':
                 messagebox.showwarning(title='Error', message='enter your username and password')
                 logging.error('not authorized user')
             if response_view.get() == 'text':
-                text_response = requests.patch(url_response, params=take_params(), headers=take_headers(), body=take_body(), auth=HTTPBasicAuth(username, password))
+                text_response = requests.patch(url_response, params=PARAMS, headers=HEADERS, data=BODY_params, auth=HTTPBasicAuth(username, password))
                 output_label.configure(text=show_raw(tree, text_response.json()))
                 bottom_output.config(text="Got response " + str(
                     text_response.status_code) + " " + f"{ok if text_response.ok is True else 'Not found'} " + f"{str(round(text_response.elapsed.total_seconds(), 2))}" + " seconds")
             elif response_view.get() == 'json':
-                post_response = requests.patch(url_response, params=take_params(), headers=take_headers(), body=take_body(), auth=HTTPBasicAuth(username, password))
+                post_response = requests.patch(url_response, params=PARAMS, headers=HEADERS, data=BODY_params, auth=HTTPBasicAuth(username, password))
                 output_label.configure(text=show_json(tree, post_response.json()))
                 bottom_output.config(text="Got response " + str(
                     post_response.status_code) + " " + f"{ok if post_response.ok is True else 'Not found'} " + f"{str(round(post_response.elapsed.total_seconds(), 2))}" + " seconds")
                 logging.info('get method called (json response)')
             elif response_view.get() == 'yaml':
-                yaml_response = requests.patch(url_response, params=take_params(), headers=take_headers(), body=take_body(), auth=HTTPBasicAuth(username, password))
+                yaml_response = requests.patch(url_response, params=PARAMS, headers=HEADERS, data=BODY_params, auth=HTTPBasicAuth(username, password))
                 output_label.configure(text=show_yaml(tree, yaml_response.json()))
                 bottom_output.config(text="Got response " + str(
                     yaml_response.status_code) + " " + f"{ok if yaml_response.ok is True else 'Not found'} " + f"{str(round(yaml_response.elapsed.total_seconds(), 2))}" + " seconds")
             elif response_view.get() == 'table':
-                table_response = requests.patch(url_response, params=take_params(), headers=take_headers(), body=take_body(), auth=HTTPBasicAuth(username, password))
+                table_response = requests.patch(url_response, params=PARAMS, headers=HEADERS, data=BODY_params, auth=HTTPBasicAuth(username, password))
                 output_label.configure(text=show_table(tree, table_response.json()))
                 bottom_output.config(text="Got response " + str(
                     table_response.status_code) + " " + f"{ok if table_response.ok is True else 'Not found'} " + f"{str(round(table_response.elapsed.total_seconds(), 2))}" + " seconds")
             elif response_view.get() == 'treeview':
-                treeview_response = requests.patch(url_response, params=take_params, headers=take_headers, auth=HTTPBasicAuth(username, password))
+                treeview_response = requests.patch(url_response, params=PARAMS, headers=HEADERS, data=BODY_params, auth=HTTPBasicAuth(username, password))
                 output_label.configure(text=make_tree(treeview_response.json()))
                 bottom_output.config(text="Got response " + str(
                     treeview_response.status_code) + " " + f"{ok if treeview_response.ok is True else 'Not found'} " + f"{str(round(treeview_response.elapsed.total_seconds(), 2))}" + " seconds")
         if str(current_method) == 'DELETE':
+            PARAMS = take_params()
+            HEADERS = take_headers()
+            BODY_params = take_body()
             if username == 'username' and password == 'password':
-                delete_request = requests.delete(url_response)
+                delete_request = requests.delete(url_response, params=PARAMS, headers=HEADERS, data=BODY_params)
                 output_label.configure(text=show_raw(tree, delete_request.json()))
                 bottom_output.config(text="Got response " + str(
                     delete_request.status_code) + " " + f"{ok if delete_request.ok is True else 'Not found'} " + f"{str(round(delete_request.elapsed.total_seconds(), 2))}" + " seconds")
             else:
-                delete_request = requests.delete(url_response, auth=HTTPBasicAuth(username, password))
+                delete_request = requests.delete(url_response, params=PARAMS, headers=HEADERS, data=BODY_params, auth=HTTPBasicAuth(username, password))
                 output_label.configure(text=show_raw(tree, delete_request.json()))
                 bottom_output.config(text="Got response " + str(
                     delete_request.status_code) + " " + f"{ok if delete_request.ok is True else 'Not found'} " + f"{str(round(delete_request.elapsed.total_seconds(), 2))}" + " seconds")
         conn.commit()
     send_button = tkmacosx.Button(request_frame, fg='aquamarine', text='Send', bg='black', command=url_request)
-    send_button.pack(side='left')
     send_button.grid(row=0, column=2)
 
     # request history frame
@@ -782,40 +780,64 @@ def main_gui():
 def main_cli():
     if args.history:
         if args.history == "show":
-            log_endgame("We will show history", logging.DEBUG)
+            logging.debug("Command to show History entered")
 
             indexes = history()
             index = input(f'Enter request index to view full info, or "q" to quit: ')
             if index == "q":
+                logging.debug(f"Command to quit from History entered")
                 sys.exit()
             elif int(index) in tuple(indexes):
+                logging.debug(f"Command to show History item #[{index}] entered")
                 show_index_from_history(index)
+                logging.debug(f"History for item #[{index}] is displayed")
+
                 sys.exit()
             else:
                 print('Wrong Input. We will quit now')
+                logging.debug("Wrong input on item select in history")
                 sys.exit()
 
         elif args.history == "clear":
+            logging.debug("Command to clear History entered")
             clear_history()
-            log_endgame("We will clear history", logging.DEBUG)
+            logging.debug("History Cleared")
     else:
+        logging.debug("Ready to perform request")
         perform_request()
 
 if __name__ == "__main__":
     args = parse_args()
+    if args.log:
+        if args.log == "info":
+            log_level = logging.INFO
+        elif args.log == "debug":
+            log_level = logging.DEBUG
+        else:
+            log_level = logging.WARNING
+    else:
+        log_level = logging.WARNING
+
+    logging.basicConfig(filename="end-game.log",
+                        filemode="a",
+                        format=f"%(levelname)s - "
+                               + f"%(asctime)s "
+                               + f": %(message)s",
+                        datefmt='%H:%M:%S',
+                        level=log_level)
 
     ok = 'OK'
     pattern = r"^^(?:http(s)?:\/\/)?[\w.-]+(?:\.[\w\.-]+)+[\w\-\._~:/?#[\]@!\$&'\(\)\*\+,;=.]+$"
 
     if args.endpoint and not re.match(pattern, args.endpoint):
-        print('INVALID URL')
-        log_endgame("INVALID URL", logging.WARNING)
+        print("You have entered an invalid URL")
+        logging.error("You have entered an invalid URL")
         sys.exit()
 
     if args.gui:
-        log_endgame("GUI will run in debug", logging.DEBUG)
+        logging.warning(f"GUI is running with logging level [{args.log}]")
         main_gui()
     else:
-        log_endgame("CLI will run in debug",logging.DEBUG)
+        logging.warning(f"CLI is running with logging level [{args.log}]")
         main_cli()
 
